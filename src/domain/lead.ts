@@ -16,7 +16,7 @@ export function leadVazio(): Lead {
     temperatura: 'frio', etapa_pipeline: 'novo',
     proxima_acao: '', proxima_acao_data: null, ultimo_contato_data: null,
     tentativas: 0, cadencia_dia: 0, cadencia_tentativa: 0, cadencia_inicio: null, cadencia_status: 'ativa',
-    origem: 'manual', criado_em: agora, atualizado_em: agora,
+    origem: 'manual', dados_receita: null, criado_em: agora, atualizado_em: agora,
   }, 100000);
 }
 

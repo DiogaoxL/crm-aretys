@@ -1,2 +1,9 @@
 node_modules
 dist
+
+# Criação de lista: base da Receita e chaves (só nesta máquina)
+dados/
+*.duckdb
+*.duckdb.wal
+.env
+.env.*

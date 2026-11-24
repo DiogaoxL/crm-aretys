@@ -3,6 +3,7 @@ import * as repo from '../db/repo';
 import { baixarArquivo, CAMPOS_IMPORTACAO, csvModelo, lerCsv, linhaParaLead, sugerirMapeamento } from '../domain/csv';
 import { useApp } from '../components/AppContext';
 import { NovoLead } from '../components/NovoLead';
+import { BarraProgresso } from '../components/ui';
 
 interface Arquivo { nome: string; cabecalhos: string[]; linhas: Record<string, string>[] }
 
@@ -53,6 +54,11 @@ export function Importar() {
           <button className="btn" onClick={() => setNovo(true)}>+ Criar lead manualmente</button>
         </div>
       </div>
+
+      {carregando && (
+        <BarraProgresso rotulo="Importando leads…"
+          detalhe="Conferindo duplicados (telefone, site e CNPJ) e gravando os leads no CRM." />
+      )}
 
       {!arq && (
         <label

@@ -9,11 +9,13 @@ import { Dashboard } from './pages/Dashboard';
 import { Fila } from './pages/Fila';
 import { Importar } from './pages/Importar';
 import { Leads } from './pages/Leads';
+import { Prospeccao } from './pages/Prospeccao';
 
 const ROTAS = [
   { id: 'fila', label: 'Fila do dia', el: <Fila /> },
   { id: 'leads', label: 'Leads', el: <Leads /> },
   { id: 'dashboard', label: 'Dashboard', el: <Dashboard /> },
+  { id: 'prospeccao', label: 'Gerar lista', el: <Prospeccao /> },
   { id: 'importar', label: 'Importar', el: <Importar /> },
   { id: 'config', label: 'Configurações', el: <Configuracoes /> },
 ];

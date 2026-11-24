@@ -12,6 +12,7 @@ import {
 import { estadoCadencia } from '../domain/lead';
 import { calcularScore, frasesAbordagem, prioridade } from '../domain/score';
 import { numeroBR } from '../domain/csv';
+import { CAMPOS_RECEITA, STATUS_GOOGLE_LABEL } from '../domain/prospeccao';
 import type { Config, Lead, StatusReuniao } from '../domain/types';
 import { useApp } from './AppContext';
 import { RegistroRapido } from './RegistroRapido';
@@ -241,6 +242,22 @@ function Ficha({ lead, config, autoFocus }: { lead: Lead; config: Config; autoFo
           <CampoTexto lead={lead} campo="decisor_telefone" label="Telefone" exibir={formatarTelefone} />
         </div>
         {lead.decisor_telefone && <div style={{ marginTop: 6 }}><Telefone tel={lead.decisor_telefone} /></div>}
+        {lead.dados_receita && (
+          <details style={{ marginTop: 16 }}>
+            <summary><b>Dados da Receita e do Google</b> <span className="muted small">(lista {lead.origem?.replace(/^receita:/, '')})</span></summary>
+            <div className="form-grid small" style={{ marginTop: 8 }}>
+              {CAMPOS_RECEITA.filter(([k]) => lead.dados_receita?.[k]).map(([k, label]) => (
+                <div key={k} className={k === 'motivos' || k === 'cnae_descricao' ? 'span2' : ''}>
+                  <span className="muted">{label}</span>
+                  <div>{k === 'google_maps'
+                    ? <a href={lead.dados_receita![k]} target="_blank" rel="noreferrer">Abrir no Maps</a>
+                    : k === 'google_status' ? STATUS_GOOGLE_LABEL[lead.dados_receita![k]] ?? lead.dados_receita![k]
+                    : lead.dados_receita![k]}</div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
       </section>
 
       <Reunioes lead={lead} />

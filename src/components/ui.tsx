@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { BLOCO_LABEL, FAIXA_CURTA, FAIXA_LABEL, TEMP_LABEL } from '../domain/constants';
 import { formatarTelefone } from '../domain/format';
 import type { Bloco, FaixaScore, Fit, Temperatura } from '../domain/types';
@@ -56,6 +56,40 @@ export function Telefone({ tel, compacto }: { tel: string; compacto?: boolean })
         {compacto ? 'WA' : 'WhatsApp'}
       </a>
     </span>
+  );
+}
+
+/**
+ * Barra de progresso para operações em andamento.
+ * Com `total`: barra real (atual/total). Sem `total`: barra animada (a operação não informa o andamento),
+ * sempre com o tempo decorrido para o usuário acompanhar.
+ */
+export function BarraProgresso({ rotulo, atual, total, detalhe }: {
+  rotulo: string; atual?: number; total?: number; detalhe?: string;
+}) {
+  const [inicio] = useState(() => Date.now());
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setAgora(Date.now()), 500);
+    return () => clearInterval(t);
+  }, []);
+  const seg = Math.floor((agora - inicio) / 1000);
+  const decorrido = seg < 60 ? `${seg}s` : `${Math.floor(seg / 60)}min ${String(seg % 60).padStart(2, '0')}s`;
+  const pct = total ? Math.min(100, (100 * (atual ?? 0)) / total) : null;
+  return (
+    <div className="progresso" role="progressbar" aria-label={rotulo}
+      aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
+      <div className="progresso-topo">
+        <b>{rotulo}</b>
+        <span className="muted small">
+          {pct != null && <><b>{atual} de {total}</b> · {pct.toFixed(0)}% · </>}{decorrido}
+        </span>
+      </div>
+      <div className={`barra${pct == null ? ' indeterminada' : ''}`}>
+        <div style={pct != null ? { width: `${pct}%` } : undefined} />
+      </div>
+      {detalhe && <div className="muted small">{detalhe}</div>}
+    </div>
   );
 }
 

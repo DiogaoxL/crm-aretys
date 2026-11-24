@@ -229,11 +229,21 @@ export interface RelatorioImportacao {
   duplicados: { linha: number; empresa: string; motivo: string }[];
 }
 
-export async function importarLeads(linhas: Partial<Lead>[], origem = 'csv'): Promise<RelatorioImportacao> {
+/** CNPJ só com letras e números (desde jul/2026 o CNPJ pode ser alfanumérico). */
+const chaveCnpj = (c?: string) => String(c ?? '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+
+/**
+ * @param opcoes.exigirSite false para listas da base da Receita, que não informam site.
+ */
+export async function importarLeads(
+  linhas: Partial<Lead>[], origem = 'csv', opcoes: { exigirSite?: boolean } = {},
+): Promise<RelatorioImportacao> {
+  const exigirSite = opcoes.exigirSite ?? true;
   const config = await getConfig();
   const existentes = await db.leads.toArray();
   const tels = new Set(existentes.map((l) => l.telefone).filter(Boolean));
   const doms = new Set(existentes.map((l) => l.dominio).filter(Boolean));
+  const cnpjs = new Set(existentes.map((l) => chaveCnpj(l.cnpj)).filter(Boolean));
   const rel: RelatorioImportacao = { importados: 0, ignorados: [], duplicados: [] };
   const novos: Lead[] = [];
   const agora = agoraIso();
@@ -243,7 +253,7 @@ export async function importarLeads(linhas: Partial<Lead>[], origem = 'csv'): Pr
     const faltando = [
       !l.nome_empresa?.trim() && 'nome da empresa',
       !normalizarTelefone(l.telefone) && 'telefone',
-      !l.site?.trim() && 'site',
+      exigirSite && !l.site?.trim() && 'site',
     ].filter(Boolean);
     if (faltando.length) {
       rel.ignorados.push({ linha, motivo: `Falta: ${faltando.join(', ')}` });
@@ -254,15 +264,18 @@ export async function importarLeads(linhas: Partial<Lead>[], origem = 'csv'): Pr
       config.limite_fit_forte,
     );
     delete lead.id;
-    if (tels.has(lead.telefone) || doms.has(lead.dominio)) {
+    const cnpj = chaveCnpj(lead.cnpj);
+    if (tels.has(lead.telefone) || doms.has(lead.dominio) || (cnpj && cnpjs.has(cnpj))) {
       rel.duplicados.push({
         linha, empresa: lead.nome_empresa,
-        motivo: tels.has(lead.telefone) ? 'Telefone já cadastrado' : 'Domínio do site já cadastrado',
+        motivo: tels.has(lead.telefone) ? 'Telefone já cadastrado'
+          : doms.has(lead.dominio) ? 'Domínio do site já cadastrado' : 'CNPJ já cadastrado',
       });
       return;
     }
     tels.add(lead.telefone);
     if (lead.dominio) doms.add(lead.dominio);
+    if (cnpj) cnpjs.add(cnpj);
     novos.push(lead);
   });
 

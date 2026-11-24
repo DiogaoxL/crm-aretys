@@ -30,6 +30,7 @@ Antes de substituir dados existentes, o app baixa um backup de segurança. Arqui
 - **Leads**: Kanban (arrastar e soltar entre etapas) ou Lista (ordenação, filtros, busca e seleção em massa).
 - **Ficha do lead** (painel lateral): dados, decisor, diagnóstico com score ao vivo, frases de abordagem, registro rápido, cadência, reuniões, venda, linha do tempo, “Marcar como perdido”.
 - **Dashboard**: funil de 7 indicadores, conversão × meta por transição, detecção de gargalo, motivos de perda, conexão por faixa de score e segmento, ligações por dia, tentativas até a 1ª conexão.
+- **Gerar lista**: lista de prospecção a partir da base da Receita (segmento, UF, município, porte, idade, decisor), verificação opcional no Google e importação dos selecionados no CRM. Veja “Criação de lista” abaixo.
 - **Importar**: CSV com mapeamento de colunas, pré-visualização, relatório (importados, ignorados, duplicados) e CSV modelo.
 - **Configurações**: metas, limite de fit, cadência, motivos de perda, etapas visíveis, backup JSON (exportar, mesclar, substituir), CSV de leads e atividades, dados de exemplo, apagar tudo.
 
@@ -55,17 +56,40 @@ Antes de substituir dados existentes, o app baixa um backup de segurança. Arqui
 - **Períodos do dashboard**: ligações pela data da atividade; reuniões marcadas pela data em que foram marcadas; realizadas pela data da reunião; vendas pela data da venda; perdas pela data em que o lead foi para Perdido.
 - Telefones guardados só com dígitos e DDI 55, exibidos formatados. Datas no fuso America/Sao_Paulo.
 
+## Criação de lista (base da Receita)
+
+Roda no Node desta máquina, dentro do próprio `npm run dev` (ou `npm run preview`), em `/api/prospeccao/*` na porta 5173. Não há servidor extra nem nuvem. No `dist/` estático (sem Node) a tela avisa que precisa do `npm run dev`.
+
+1. **Uma vez por mês:** em **Gerar lista**, clique em **Baixar e carregar a base** (depois, **Verificar mês novo e atualizar**). O app:
+   - descobre o mês mais recente no compartilhamento público da Receita (`arquivos.receitafederal.gov.br`, WebDAV);
+   - baixa os 33 ZIPs necessários (~7,8 GB) para `dados/cnpj/AAAA-MM`, retomando se a conexão cair;
+   - descompacta um por vez em `dados/tmp` e carrega no banco `dados/receita.duckdb` (todas as UFs; para limitar, `RECEITA_UFS=PR,SC` no `.env`);
+   - apaga os ZIPs e a pasta temporária **só depois** que a carga termina sem erro. Se já estiver no mês mais recente, não baixa nada.
+
+   Tudo fica dentro do projeto, em `dados/` (fora do Git). Deixe o projeto fora de OneDrive/Dropbox. A recarga recria só as tabelas da Receita: o histórico de quem foi enviado ao CRM e o cache do Google ficam.
+
+   Pelo terminal (com o app fechado): `npm run receita:atualizar` (opções `--uf PR`, `--manter-zips`, `--forcar`). Com ZIPs baixados à mão: `npm run receita:carregar -- --zips <pasta>`. Se a Receita trocar o compartilhamento, ajuste `RECEITA_SHARE_TOKEN` no `.env`.
+2. **Gerar lista:** escolha o segmento: cada atividade (CNAE) da base com empresas é um segmento, agrupado por seção da CNAE e com a quantidade de empresas (busca por nome ou código). Há também a área “Nichos”, com recortes por nome em `src/server/prospeccao/segmentos.json` (dá para editar e acrescentar), a UF e os municípios, e clique em **Gerar lista**. Selecione e clique em **Enviar para o CRM**: os leads são criados direto no CRM, sem exportar nem importar arquivo. Quem entrou no CRM não volta nas próximas listas por 90 dias.
+3. **Google (opcional):** crie `.env` na pasta do CRM com `GOOGLE_PLACES_API_KEY=sua-chave` (ou `SERPER_API_KEY`) e reinicie o `npm run dev`. A chave fica só no Node, nunca vai para o navegador. A verificação é a única parte que acessa a internet (`places.googleapis.com` / `google.serper.dev`), e para antes de passar de 4.800 (Text Search) e 950 (Details) chamadas por mês.
+
+Também pela linha de comando: `npm run receita:lista -- --segmento dermatologia --uf PR --municipio Curitiba` e `npm run receita:google -- lista.csv`. Testes: `npm test`.
+
+LGPD: nome de sócio e telefone/e-mail de empresário individual são dados pessoais. Registre o legítimo interesse e respeite pedidos de opt-out.
+
 ## Arquitetura
 
 ```
 src/
-  domain/   regras puras: tipos, score, cadência, métricas, CSV, formatação, dados de exemplo
+  domain/   regras puras: tipos, score, cadência, métricas, CSV, formatação, dados de exemplo, conversão da lista em lead
   db/
     schema.ts  schema Dexie versionado (adicione version(2)... para migrar)
     repo.ts    repositório: única camada que acessa o banco
     hooks.ts   hooks reativos (useLiveQuery) sobre o repositório
+    prospeccaoApi.ts  cliente da API local de criação de lista
   components/ ficha, registro rápido, modais
-  pages/      Fila, Leads, Dashboard, Importar, Configurações
+  pages/      Fila, Leads, Gerar lista, Dashboard, Importar, Configurações
+  server/     roda no Node (nunca no navegador)
+    prospeccao/  criação de lista: Receita → DuckDB, lista, verificação no Google, serviço e plugin do Vite
 ```
 
 Para trocar o IndexedDB por outro banco (por exemplo SQLite), reimplemente `db/repo.ts` e `db/hooks.ts` com as mesmas assinaturas. As telas não mudam.

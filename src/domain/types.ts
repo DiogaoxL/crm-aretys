@@ -71,6 +71,8 @@ export interface Lead extends Diagnostico {
   motivo_perda_texto?: string;
   perdido_em?: string | null; // ISO UTC de quando foi para Perdido
   origem?: string;
+  /** Linha da lista gerada da base da Receita (e verificação no Google), quando o lead veio de lá. */
+  dados_receita?: Record<string, string> | null;
   criado_em: string;
   atualizado_em: string;
 }
